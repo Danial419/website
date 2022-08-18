@@ -1,0 +1,70 @@
+master master replacation
+
+---> Master- (66.36.234.183)
+sudo nano /etc/mysql/mariadb.conf.d/50-server.cnf
+
+bind-address= 66.36.234.183
+server-id =1
+#######Add at the end of file#############
+	log_bin = /var/log/mysql/mysql-bin.log
+	log_bin_index =/var/log/mysql/mysql-bin.log.index
+	relay_log = /var/log/mysql/mysql-relay-bin
+	relay_log_index = /var/log/mysql/mysql-relay-bin.index
+
+sudo systemctl restart mysql
+
+
+sudo mysql -uroot -p
+CREATE USER 'king1'@'66.36.234.182' IDENTIFIED BY 'King@123';
+GRANT REPLICATION SLAVE ON *.* TO 'king1'@'66.36.234.182';
+FLUSH PRIVILEGES;
+show master status;
+
++------------------+----------+--------------+------------------+
+| File             | Position | Binlog_Do_DB | Binlog_Ignore_DB |
++------------------+----------+--------------+------------------+
+| mysql-bin.000001 |      801 |              |                  |
++------------------+----------+--------------+------------------+
+1 row in set (0.000 sec)
+-------------------------------------------------------------------------------------
+
+
+##change bin file and position###
+stop slave;
+RESET SLAVE;
+##change bin file and position### ----> COPY FROM MASTER-2 (IN RED TAB)
+CHANGE MASTER TO MASTER_HOST = '66.36.234.182', MASTER_USER = 'king2', MASTER_PASSWORD = 'King@123', MASTER_LOG_FILE = 'mysql-bin.000001', MASTER_LOG_POS = 792;
+START SLAVE;
+
+
+
+----> Master-2 (66.36.234.182)
+sudo nano /etc/mysql/mariadb.conf.d/50-server.cnf
+
+bind-address= 66.36.234.182
+server-id =2
+#######Add at the end of file#############
+	log_bin = /var/log/mysql/mysql-bin.log
+	log_bin_index =/var/log/mysql/mysql-bin.log.index
+	relay_log = /var/log/mysql/mysql-relay-bin
+	relay_log_index = /var/log/mysql/mysql-relay-bin.index
+	
+sudo systemctl restart mysql
+
+sudo mysql -uroot -p
+CREATE USER 'king2'@'66.36.234.183' IDENTIFIED BY 'King@123';
+GRANT REPLICATION SLAVE ON *.* TO 'king2'@'66.36.234.183';
+FLUSH PRIVILEGES;
+stop slave;
+##change bin file and position### COPY FROM MASTER-1 (IN GREEN TAB)
+CHANGE MASTER TO MASTER_HOST ='66.36.234.183', MASTER_USER ='king1', MASTER_PASSWORD ='King@123', MASTER_LOG_FILE = 'mysql-bin.000001', MASTER_LOG_POS = 801;  
+start slave;
+show master status;
+
+
++------------------+----------+--------------+------------------+
+| File             | Position | Binlog_Do_DB | Binlog_Ignore_DB |
++------------------+----------+--------------+------------------+
+| mysql-bin.000001 |      792 |              |                  |
++------------------+----------+--------------+------------------+
+1 row in set (0.00 sec)
